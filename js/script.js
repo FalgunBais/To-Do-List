@@ -1,8 +1,9 @@
 /**
- * TaskFlow - Vanilla JavaScript Application Logic
+ * TaskFlow - Premium Dashboard & Reminders Engine
  * Includes task CRUD operations, statistics calculation,
  * filter & search handling, inline task editing,
- * customizable real-time reminders engine, Web Audio chime,
+ * personalized time-of-day greeting, Thought for the Day quote engine,
+ * customizable recurring reminders engine, Web Audio chime,
  * and localStorage persistence.
  */
 
@@ -12,14 +13,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // State & Configuration
   // =========================================================================
   const STORAGE_KEY = 'taskflow_tasks_v1';
+  const USER_KEY = 'taskflow_username_v1';
   
   let state = {
     tasks: [],
+    userName: 'Sunil',
     filter: 'all', // 'all' | 'active' | 'completed'
     searchQuery: '',
     editingId: null,
-    activeAlertTaskId: null
+    activeAlertTaskId: null,
+    currentQuoteIndex: 0
   };
+
+  // Inspirational Quotes Database
+  const MOTIVATIONAL_QUOTES = [
+    { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
+    { text: "Action is the foundational key to all success.", author: "Pablo Picasso" },
+    { text: "Focus on being productive instead of busy.", author: "Tim Ferriss" },
+    { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+    { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
+    { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+    { text: "Don't count the days, make the days count.", author: "Muhammad Ali" }
+  ];
 
   // Sample tasks loaded if user has no stored tasks
   const DEFAULT_TASKS = [
@@ -52,6 +67,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   // DOM Elements
   // =========================================================================
+  const timeGreetingEl = document.getElementById('timeGreeting');
+  const userNameBadge = document.getElementById('userNameBadge');
+  
+  // Thought for the Day elements
+  const quoteText = document.getElementById('quoteText');
+  const quoteAuthor = document.getElementById('quoteAuthor');
+  const shuffleQuoteBtn = document.getElementById('shuffleQuoteBtn');
+
+  // Task form elements
   const taskForm = document.getElementById('taskForm');
   const taskInput = document.getElementById('taskInput');
   const prioritySelect = document.getElementById('prioritySelect');
@@ -75,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const enableReminderCheck = document.getElementById('enableReminderCheck');
   const reminderInputGroup = document.getElementById('reminderInputGroup');
   const reminderDateTime = document.getElementById('reminderDateTime');
+  const recurrenceSelect = document.getElementById('recurrenceSelect');
   const reminderSoundCheck = document.getElementById('reminderSoundCheck');
   const notifyPermissionBtn = document.getElementById('notifyPermissionBtn');
   const notifyPermText = document.getElementById('notifyPermText');
@@ -86,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const reminderModalOverlay = document.getElementById('reminderModalOverlay');
   const modalTaskTitle = document.getElementById('modalTaskTitle');
   const modalTaskTime = document.getElementById('modalTaskTime');
+  const modalRecurrenceTag = document.getElementById('modalRecurrenceTag');
   const modalSnooze5Btn = document.getElementById('modalSnooze5Btn');
   const modalSnooze15Btn = document.getElementById('modalSnooze15Btn');
   const modalCompleteBtn = document.getElementById('modalCompleteBtn');
@@ -98,7 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Application Initialization
   // =========================================================================
   function init() {
-    setupHeaderDate();
+    loadUserData();
+    setupHeaderGreetingAndDate();
+    setupThoughtOfTheDay();
     loadTasks();
     setupDefaultReminderInput();
     setupEventListeners();
@@ -108,15 +136,66 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Sets up real-time date and day in the header
+   * Calculates time of day and sets greeting message & user name
    */
-  function setupHeaderDate() {
+  function setupHeaderGreetingAndDate() {
     const now = new Date();
+    const hours = now.getHours();
+
+    let greeting = 'Good Morning';
+    if (hours >= 12 && hours < 17) {
+      greeting = 'Good Afternoon';
+    } else if (hours >= 17 && hours < 22) {
+      greeting = 'Good Evening';
+    } else if (hours >= 22 || hours < 5) {
+      greeting = 'Good Night';
+    }
+
+    timeGreetingEl.textContent = greeting;
+    userNameBadge.textContent = state.userName;
+
     const dayOptions = { weekday: 'long' };
     const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
 
     currentDayEl.textContent = now.toLocaleDateString('en-US', dayOptions);
     currentDateEl.textContent = now.toLocaleDateString('en-US', dateOptions);
+  }
+
+  function loadUserData() {
+    const storedName = localStorage.getItem(USER_KEY);
+    if (storedName) {
+      state.userName = storedName;
+    }
+  }
+
+  function saveUserName(newName) {
+    const trimmed = newName.trim();
+    if (trimmed) {
+      state.userName = trimmed;
+      localStorage.setItem(USER_KEY, trimmed);
+      userNameBadge.textContent = trimmed;
+    }
+  }
+
+  /**
+   * Sets up Thought for the Day based on day of year
+   */
+  function setupThoughtOfTheDay() {
+    const today = new Date();
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+    state.currentQuoteIndex = dayOfYear % MOTIVATIONAL_QUOTES.length;
+    displayQuote(state.currentQuoteIndex);
+  }
+
+  function displayQuote(index) {
+    const quote = MOTIVATIONAL_QUOTES[index];
+    quoteText.textContent = `"${quote.text}"`;
+    quoteAuthor.textContent = `\u2014 ${quote.author}`;
+  }
+
+  function shuffleQuote() {
+    state.currentQuoteIndex = (state.currentQuoteIndex + 1) % MOTIVATIONAL_QUOTES.length;
+    displayQuote(state.currentQuoteIndex);
   }
 
   /**
@@ -125,7 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupDefaultReminderInput() {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 15);
-    // Format YYYY-MM-THH:mm for datetime-local
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -165,6 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Event Listeners Setup
   // =========================================================================
   function setupEventListeners() {
+    // Edit username on badge click
+    userNameBadge.addEventListener('click', () => {
+      const input = prompt('Enter your name:', state.userName);
+      if (input !== null) {
+        saveUserName(input);
+      }
+    });
+
+    // Quote shuffle button
+    shuffleQuoteBtn.addEventListener('click', shuffleQuote);
+
     // Form submission
     taskForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -211,16 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
     modalSnooze5Btn.addEventListener('click', () => handleSnoozeModal(5));
     modalSnooze15Btn.addEventListener('click', () => handleSnoozeModal(15));
     modalCompleteBtn.addEventListener('click', handleCompleteModalTask);
-    modalDismissBtn.addEventListener('click', hideReminderModal);
+    modalDismissBtn.addEventListener('click', handleDismissModalTask);
   }
 
   // =========================================================================
   // Web Audio & Browser Notification Utilities
   // =========================================================================
-  
-  /**
-   * Synthesizes a pleasant multi-tone audio chime using Web Audio API
-   */
   function playChimeSound() {
     try {
       if (!audioCtx) {
@@ -254,9 +339,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /**
-   * Requests Browser Native Notification Permission
-   */
   function requestNotificationPermission() {
     if ('Notification' in window) {
       Notification.requestPermission().then(permission => {
@@ -289,7 +371,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Real-time Reminder Engine
+  // Recurrence Calculation Helper
+  // =========================================================================
+  /**
+   * Calculates next recurrence date based on pattern (daily, weekly, weekdays, monthly)
+   * @param {string} currentISO 
+   * @param {string} type 
+   * @returns {string} ISOString
+   */
+  function calculateNextRecurrence(currentISO, type) {
+    const dt = new Date(currentISO);
+    
+    switch (type) {
+      case 'daily':
+        dt.setDate(dt.getDate() + 1);
+        break;
+      case 'weekdays':
+        do {
+          dt.setDate(dt.getDate() + 1);
+        } while (dt.getDay() === 0 || dt.getDay() === 6); // Skip Sun(0) & Sat(6)
+        break;
+      case 'weekly':
+        dt.setDate(dt.getDate() + 7);
+        break;
+      case 'monthly':
+        dt.setMonth(dt.getMonth() + 1);
+        break;
+      default:
+        break;
+    }
+    return dt.toISOString();
+  }
+
+  // =========================================================================
+  // Real-time Reminder Engine & Alert Ticker
   // =========================================================================
   function startReminderEngine() {
     setInterval(() => {
@@ -307,7 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const reminderMs = new Date(task.reminder.dateTime).getTime();
 
       if (nowMs >= reminderMs) {
-        // Trigger real-time alert!
         task.reminder.triggered = true;
         saveTasks();
 
@@ -315,7 +429,11 @@ document.addEventListener('DOMContentLoaded', () => {
           playChimeSound();
         }
 
-        showNativeNotification('TaskFlow Reminder', `Time for: ${task.title}`);
+        const recurrenceText = task.reminder.recurrence && task.reminder.recurrence !== 'none'
+          ? ` (${task.reminder.recurrence.toUpperCase()})`
+          : '';
+
+        showNativeNotification('TaskFlow Reminder' + recurrenceText, `Time for: ${task.title}`);
         showReminderModal(task);
       }
     });
@@ -327,6 +445,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function showReminderModal(task) {
     state.activeAlertTaskId = task.id;
     modalTaskTitle.textContent = task.title;
+
+    if (task.reminder.recurrence && task.reminder.recurrence !== 'none') {
+      modalRecurrenceTag.textContent = `RECURRING ALERT (${task.reminder.recurrence.toUpperCase()})`;
+    } else {
+      modalRecurrenceTag.textContent = 'REAL-TIME REMINDER ALERT';
+    }
 
     const formattedTime = new Date(task.reminder.dateTime).toLocaleTimeString([], {
       hour: '2-digit',
@@ -369,8 +493,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function handleCompleteModalTask() {
     if (!state.activeAlertTaskId) return;
-    toggleTask(state.activeAlertTaskId);
+
+    const targetId = state.activeAlertTaskId;
+    const targetTask = state.tasks.find(t => t.id === targetId);
+
+    // If recurring, advance reminder to next cycle instead of marking completed forever!
+    if (targetTask && targetTask.reminder && targetTask.reminder.recurrence && targetTask.reminder.recurrence !== 'none') {
+      const nextDate = calculateNextRecurrence(targetTask.reminder.dateTime, targetTask.reminder.recurrence);
+      state.tasks = state.tasks.map(t => {
+        if (t.id === targetId) {
+          return {
+            ...t,
+            reminder: {
+              ...t.reminder,
+              dateTime: nextDate,
+              triggered: false
+            }
+          };
+        }
+        return t;
+      });
+    } else {
+      toggleTask(targetId);
+    }
+
+    saveTasks();
     hideReminderModal();
+    render();
+  }
+
+  function handleDismissModalTask() {
+    if (!state.activeAlertTaskId) return;
+
+    const targetId = state.activeAlertTaskId;
+    const targetTask = state.tasks.find(t => t.id === targetId);
+
+    // If recurring, reschedule to next recurrence automatically!
+    if (targetTask && targetTask.reminder && targetTask.reminder.recurrence && targetTask.reminder.recurrence !== 'none') {
+      const nextDate = calculateNextRecurrence(targetTask.reminder.dateTime, targetTask.reminder.recurrence);
+      state.tasks = state.tasks.map(t => {
+        if (t.id === targetId) {
+          return {
+            ...t,
+            reminder: {
+              ...t.reminder,
+              dateTime: nextDate,
+              triggered: false
+            }
+          };
+        }
+        return t;
+      });
+      saveTasks();
+    }
+
+    hideReminderModal();
+    render();
   }
 
   // =========================================================================
@@ -391,6 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (enableReminderCheck.checked && reminderDateTime.value) {
       reminderObj = {
         dateTime: new Date(reminderDateTime.value).toISOString(),
+        recurrence: recurrenceSelect.value,
         soundEnabled: reminderSoundCheck.checked,
         triggered: false
       };
@@ -542,6 +721,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      let recurrenceBadge = '';
+      if (task.reminder.recurrence && task.reminder.recurrence !== 'none') {
+        recurrenceBadge = `<span class="recurrence-badge">${task.reminder.recurrence}</span>`;
+      }
+
       const card = document.createElement('div');
       card.className = 'reminder-card-item';
       card.innerHTML = `
@@ -553,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
             ${remDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; ${remDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+            ${recurrenceBadge}
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -680,12 +865,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (task.reminder) {
       const remDate = new Date(task.reminder.dateTime);
       const formattedRem = `${remDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      const recBadge = task.reminder.recurrence && task.reminder.recurrence !== 'none'
+        ? ` <span class="recurrence-badge">${task.reminder.recurrence}</span>`
+        : '';
       reminderHtml = `
         <span class="task-reminder-badge">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           </svg>
-          ${formattedRem}
+          ${formattedRem}${recBadge}
         </span>
         <span>&bull;</span>
       `;

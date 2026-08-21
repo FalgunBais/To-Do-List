@@ -38,7 +38,7 @@
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.25);
-  --backdrop-blur: blur(16px);
+  --backdrop-blur: blur(20px);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -67,6 +67,42 @@ body {
   padding: 2rem 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ambient Background Aura Lights */
+.ambient-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+}
+
+.glow-1 {
+  width: 400px;
+  height: 400px;
+  top: -100px;
+  left: 10%;
+  background: radial-gradient(circle, #6366f1 0%, rgba(99, 102, 241, 0) 70%);
+}
+
+.glow-2 {
+  width: 450px;
+  height: 450px;
+  top: 200px;
+  right: 5%;
+  background: radial-gradient(circle, #a855f7 0%, rgba(168, 85, 247, 0) 70%);
+}
+
+.glow-3 {
+  width: 350px;
+  height: 350px;
+  bottom: 50px;
+  left: 20%;
+  background: radial-gradient(circle, #06b6d4 0%, rgba(6, 182, 212, 0) 70%);
 }
 
 /* Utility Classes */
@@ -76,15 +112,17 @@ body {
 
 /* Layout Container */
 .app-container {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 800px;
+  max-width: 840px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
 }
 
-/* Header */
+/* Header & Personalized Greeting */
 .app-header {
   display: flex;
   justify-content: space-between;
@@ -98,6 +136,11 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
+.header-left-col {
+  display: flex;
+  align-items: center;
+}
+
 .brand-wrapper {
   display: flex;
   align-items: center;
@@ -105,8 +148,8 @@ body {
 }
 
 .logo-badge {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   background: var(--accent-gradient);
   display: flex;
@@ -114,20 +157,38 @@ body {
   justify-content: center;
   box-shadow: var(--shadow-glow);
   color: #ffffff;
+  flex-shrink: 0;
 }
 
 .logo-badge svg {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
-.app-title-group h1 {
-  font-size: 1.5rem;
+.greeting-group h1 {
+  font-size: 1.45rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, var(--text-secondary) 100%);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.user-name-badge {
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  cursor: pointer;
+  border-bottom: 2px dashed rgba(236, 72, 153, 0.5);
+  padding-bottom: 2px;
+  transition: var(--transition);
+}
+
+.user-name-badge:hover {
+  opacity: 0.85;
+  border-bottom-color: #ec4899;
 }
 
 .app-subtitle {
@@ -184,6 +245,98 @@ body {
   color: var(--success);
 }
 
+/* Thought for the Day Card */
+.quote-card {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(19, 27, 46, 0.85) 100%);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-left: 4px solid var(--accent-secondary);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.quote-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.08));
+  pointer-events: none;
+}
+
+.quote-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quote-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.quote-header-title {
+  font-size: 0.725rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e879f9;
+}
+
+.quote-text {
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.quote-author {
+  font-size: 0.775rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.btn-quote-shuffle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.775rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-quote-shuffle:hover {
+  color: #ffffff;
+  border-color: var(--accent-secondary);
+  background: rgba(168, 85, 247, 0.2);
+}
+
 /* Dashboard Statistics Cards */
 .stats-grid {
   display: grid;
@@ -207,7 +360,7 @@ body {
 .stat-card:hover {
   transform: translateY(-2px);
   border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
 }
 
 .stat-icon {
@@ -406,7 +559,7 @@ body {
   transform: translateY(0);
 }
 
-/* Reminder Customization Controls */
+/* Reminder Customization & Recurrence Controls */
 .form-row-reminder {
   display: flex;
   align-items: center;
@@ -452,9 +605,10 @@ body {
   align-items: center;
   gap: 0.75rem;
   flex: 1;
+  flex-wrap: wrap;
 }
 
-.datetime-input {
+.datetime-input, .recurrence-select {
   padding: 0.45rem 0.75rem;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid var(--card-border);
@@ -466,7 +620,7 @@ body {
   transition: var(--transition);
 }
 
-.datetime-input:focus {
+.datetime-input:focus, .recurrence-select:focus {
   border-color: var(--accent-primary);
 }
 
@@ -488,13 +642,13 @@ body {
 .reminders-section {
   background: var(--card-bg);
   backdrop-filter: var(--backdrop-blur);
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.25);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.1);
+  box-shadow: 0 4px 25px rgba(168, 85, 247, 0.15);
 }
 
 .reminders-header {
@@ -556,6 +710,17 @@ body {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+}
+
+.recurrence-badge {
+  padding: 0.1rem 0.4rem;
+  background: rgba(236, 72, 153, 0.15);
+  border: 1px solid rgba(236, 72, 153, 0.3);
+  color: #f472b6;
+  border-radius: var(--radius-sm);
+  font-size: 0.675rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .reminder-countdown-badge {
@@ -947,9 +1112,9 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(9, 13, 22, 0.8);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -960,17 +1125,17 @@ body {
 
 .reminder-modal-card {
   background: rgba(19, 27, 46, 0.95);
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  border: 1px solid rgba(168, 85, 247, 0.5);
   border-radius: var(--radius-lg);
   padding: 2rem;
   width: 100%;
-  max-width: 440px;
+  max-width: 450px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 1.25rem;
-  box-shadow: 0 0 50px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 60px rgba(168, 85, 247, 0.4);
   animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1151,6 +1316,11 @@ body {
 
   .date-badge {
     text-align: left;
+  }
+
+  .quote-card {
+    flex-direction: column;
+    align-items: flex-start;
   }
   
   .stats-grid {

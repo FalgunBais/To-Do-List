@@ -3,29 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaskFlow | Dashboard To-Do Application & Reminders</title>
-  <meta name="description" content="A clean, modern, dark glassmorphism dashboard To-Do List web application with real-time customizable reminders, statistics, and local storage.">
+  <title>TaskFlow | Premium Dashboard & Reminders</title>
+  <meta name="description" content="A clean, modern, dark glassmorphism dashboard To-Do List web application with real-time customizable reminders, statistics, quotes, and local storage.">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
+  <!-- Ambient Glowing Background Elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
   <div class="app-container">
     
-    <!-- Application Header -->
+    <!-- Application Header & Personal Greeting -->
     <header class="app-header">
-      <div class="brand-wrapper">
-        <div class="logo-badge">
-          <!-- Checkmark Icon -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 11 12 14 22 4"></polyline>
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-          </svg>
-        </div>
-        <div class="app-title-group">
-          <h1>TaskFlow</h1>
-          <p class="app-subtitle">Manage goals & real-time reminders</p>
+      <div class="header-left-col">
+        <div class="brand-wrapper">
+          <div class="logo-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 11 12 14 22 4"></polyline>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+          </div>
+          <div class="greeting-group">
+            <h1 class="greeting-text">
+              <span id="timeGreeting">Good Afternoon</span>, 
+              <span id="userNameBadge" class="user-name-badge" title="Click to edit your name">Sunil</span>
+            </h1>
+            <p class="app-subtitle">Manage goals & real-time recurring reminders</p>
+          </div>
         </div>
       </div>
+
       <div class="header-right">
         <div class="date-badge">
           <span class="current-day" id="currentDay">Today</span>
@@ -41,6 +51,27 @@
         </button>
       </div>
     </header>
+
+    <!-- Thought for the Day Card -->
+    <section class="quote-card" aria-label="Thought for the Day">
+      <div class="quote-icon-box">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+        </svg>
+      </div>
+      <div class="quote-content">
+        <div class="quote-header-title">Thought for the Day</div>
+        <blockquote id="quoteText" class="quote-text">"Small daily improvements over time lead to stunning results."</blockquote>
+        <div id="quoteAuthor" class="quote-author">&mdash; Robin Sharma</div>
+      </div>
+      <button id="shuffleQuoteBtn" class="btn-quote-shuffle" title="Get another motivational thought">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>New Thought</span>
+      </button>
+    </section>
 
     <!-- Dashboard Statistics -->
     <section class="stats-grid" aria-label="Task Statistics">
@@ -99,7 +130,7 @@
       </div>
     </div>
 
-    <!-- Task Creation Input Form with Real-time Reminder Options -->
+    <!-- Task Creation Input Form with Real-time & Recurring Reminder Options -->
     <section class="task-input-card">
       <form id="taskForm" class="input-form">
         <div class="form-row-main">
@@ -127,7 +158,7 @@
           </button>
         </div>
 
-        <!-- Customizable Reminder Controls Row -->
+        <!-- Customizable & Recurring Reminder Controls Row -->
         <div class="form-row-reminder">
           <label class="reminder-toggle-label">
             <input type="checkbox" id="enableReminderCheck">
@@ -142,6 +173,16 @@
 
           <div id="reminderInputGroup" class="reminder-input-group hidden">
             <input type="datetime-local" id="reminderDateTime" class="datetime-input">
+            
+            <!-- Recurrence Selector -->
+            <select id="recurrenceSelect" class="recurrence-select" aria-label="Reminder Recurrence">
+              <option value="none">Does not repeat</option>
+              <option value="daily">Repeat Daily</option>
+              <option value="weekdays">Repeat Weekdays (Mon-Fri)</option>
+              <option value="weekly">Repeat Weekly</option>
+              <option value="monthly">Repeat Monthly</option>
+            </select>
+
             <label class="sound-toggle-label" title="Play chime sound when reminder triggers">
               <input type="checkbox" id="reminderSoundCheck" checked>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -163,7 +204,7 @@
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          Upcoming Reminders
+          Upcoming & Recurring Reminders
         </div>
         <span class="reminders-count-badge" id="remindersCountBadge">0</span>
       </div>
@@ -224,7 +265,7 @@
         </svg>
       </div>
       <div class="reminder-modal-header">
-        <span class="reminder-tag">REMINDER ALERT</span>
+        <span class="reminder-tag" id="modalRecurrenceTag">REAL-TIME REMINDER ALERT</span>
         <h3 id="modalTaskTitle" class="modal-task-title">Task Title</h3>
         <p id="modalTaskTime" class="modal-task-time">Scheduled for 12:00 PM</p>
       </div>
