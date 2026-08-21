@@ -1,8 +1,8 @@
 /**
  * TaskFlow - Vanilla JavaScript Application Logic
- * 
  * Includes task CRUD operations, statistics calculation,
  * filter & search handling, inline task editing,
+ * customizable real-time reminders engine, Web Audio chime,
  * and localStorage persistence.
  */
 
@@ -17,7 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     tasks: [],
     filter: 'all', // 'all' | 'active' | 'completed'
     searchQuery: '',
-    editingId: null
+    editingId: null,
+    activeAlertTaskId: null
   };
 
   // Sample tasks loaded if user has no stored tasks
@@ -27,21 +28,24 @@ document.addEventListener('DOMContentLoaded', () => {
       title: 'Explore TaskFlow dashboard features',
       completed: true,
       priority: 'high',
-      createdAt: 'Today'
+      createdAt: 'Today',
+      reminder: null
     },
     {
       id: 1700000000002,
       title: 'Complete project documentation',
       completed: false,
       priority: 'medium',
-      createdAt: 'Today'
+      createdAt: 'Today',
+      reminder: null
     },
     {
       id: 1700000000003,
       title: 'Design high-converting landing page',
       completed: false,
       priority: 'low',
-      createdAt: 'Today'
+      createdAt: 'Today',
+      reminder: null
     }
   ];
 
@@ -67,13 +71,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const currentDayEl = document.getElementById('currentDay');
   const currentDateEl = document.getElementById('currentDate');
 
+  // Reminder elements
+  const enableReminderCheck = document.getElementById('enableReminderCheck');
+  const reminderInputGroup = document.getElementById('reminderInputGroup');
+  const reminderDateTime = document.getElementById('reminderDateTime');
+  const reminderSoundCheck = document.getElementById('reminderSoundCheck');
+  const notifyPermissionBtn = document.getElementById('notifyPermissionBtn');
+  const notifyPermText = document.getElementById('notifyPermText');
+  const remindersSection = document.getElementById('remindersSection');
+  const remindersList = document.getElementById('remindersList');
+  const remindersCountBadge = document.getElementById('remindersCountBadge');
+
+  // Reminder Alert Modal elements
+  const reminderModalOverlay = document.getElementById('reminderModalOverlay');
+  const modalTaskTitle = document.getElementById('modalTaskTitle');
+  const modalTaskTime = document.getElementById('modalTaskTime');
+  const modalSnooze5Btn = document.getElementById('modalSnooze5Btn');
+  const modalSnooze15Btn = document.getElementById('modalSnooze15Btn');
+  const modalCompleteBtn = document.getElementById('modalCompleteBtn');
+  const modalDismissBtn = document.getElementById('modalDismissBtn');
+
+  // Web Audio Context for Chimes
+  let audioCtx = null;
+
   // =========================================================================
   // Application Initialization
   // =========================================================================
   function init() {
     setupHeaderDate();
     loadTasks();
+    setupDefaultReminderInput();
     setupEventListeners();
+    updateNotificationPermissionUI();
+    startReminderEngine();
     render();
   }
 
@@ -89,13 +119,25 @@ document.addEventListener('DOMContentLoaded', () => {
     currentDateEl.textContent = now.toLocaleDateString('en-US', dateOptions);
   }
 
+  /**
+   * Sets default datetime-local input value to 15 minutes in future
+   */
+  function setupDefaultReminderInput() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 15);
+    // Format YYYY-MM-THH:mm for datetime-local
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+    reminderDateTime.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
   // =========================================================================
   // Storage Handlers
   // =========================================================================
-  
-  /**
-   * Loads tasks from localStorage or uses default tasks on first launch
-   */
   function loadTasks() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -111,9 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /**
-   * Saves current state tasks to localStorage
-   */
   function saveTasks() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
@@ -126,19 +165,31 @@ document.addEventListener('DOMContentLoaded', () => {
   // Event Listeners Setup
   // =========================================================================
   function setupEventListeners() {
-    // Form submission to add new task
+    // Form submission
     taskForm.addEventListener('submit', (e) => {
       e.preventDefault();
       handleAddTask();
     });
 
-    // Search input field live filtering
+    // Reminder toggle checkbox
+    enableReminderCheck.addEventListener('change', () => {
+      if (enableReminderCheck.checked) {
+        reminderInputGroup.classList.remove('hidden');
+      } else {
+        reminderInputGroup.classList.add('hidden');
+      }
+    });
+
+    // Browser Notification permission button
+    notifyPermissionBtn.addEventListener('click', requestNotificationPermission);
+
+    // Search input
     searchInput.addEventListener('input', (e) => {
       state.searchQuery = e.target.value.trim().toLowerCase();
       render();
     });
 
-    // Filter tab switching
+    // Filter tabs
     filterBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         filterBtns.forEach(b => {
@@ -153,27 +204,196 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Clear completed tasks button
+    // Clear completed button
     clearCompletedBtn.addEventListener('click', handleClearCompleted);
+
+    // Modal action buttons
+    modalSnooze5Btn.addEventListener('click', () => handleSnoozeModal(5));
+    modalSnooze15Btn.addEventListener('click', () => handleSnoozeModal(15));
+    modalCompleteBtn.addEventListener('click', handleCompleteModalTask);
+    modalDismissBtn.addEventListener('click', hideReminderModal);
+  }
+
+  // =========================================================================
+  // Web Audio & Browser Notification Utilities
+  // =========================================================================
+  
+  /**
+   * Synthesizes a pleasant multi-tone audio chime using Web Audio API
+   */
+  function playChimeSound() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      notes.forEach((freq, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.12);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime + index * 0.12);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + index * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * 0.12 + 0.4);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(audioCtx.currentTime + index * 0.12);
+        osc.stop(audioCtx.currentTime + index * 0.12 + 0.45);
+      });
+    } catch (e) {
+      console.log('Audio playback blocked or uninitialized', e);
+    }
+  }
+
+  /**
+   * Requests Browser Native Notification Permission
+   */
+  function requestNotificationPermission() {
+    if ('Notification' in window) {
+      Notification.requestPermission().then(permission => {
+        updateNotificationPermissionUI();
+      });
+    } else {
+      alert('Desktop notifications are not supported in your browser.');
+    }
+  }
+
+  function updateNotificationPermissionUI() {
+    if (!('Notification' in window)) return;
+
+    if (Notification.permission === 'granted') {
+      notifyPermissionBtn.classList.add('granted');
+      notifyPermText.textContent = 'Alerts Active';
+    } else {
+      notifyPermissionBtn.classList.remove('granted');
+      notifyPermText.textContent = 'Enable Alerts';
+    }
+  }
+
+  function showNativeNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body: body,
+        icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%236366f1" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>'
+      });
+    }
+  }
+
+  // =========================================================================
+  // Real-time Reminder Engine
+  // =========================================================================
+  function startReminderEngine() {
+    setInterval(() => {
+      checkDueReminders();
+      updateRemindersSection();
+    }, 1000);
+  }
+
+  function checkDueReminders() {
+    const nowMs = Date.now();
+
+    state.tasks.forEach(task => {
+      if (task.completed || !task.reminder || task.reminder.triggered) return;
+
+      const reminderMs = new Date(task.reminder.dateTime).getTime();
+
+      if (nowMs >= reminderMs) {
+        // Trigger real-time alert!
+        task.reminder.triggered = true;
+        saveTasks();
+
+        if (task.reminder.soundEnabled) {
+          playChimeSound();
+        }
+
+        showNativeNotification('TaskFlow Reminder', `Time for: ${task.title}`);
+        showReminderModal(task);
+      }
+    });
+  }
+
+  // =========================================================================
+  // Reminder Modal Popup Logic
+  // =========================================================================
+  function showReminderModal(task) {
+    state.activeAlertTaskId = task.id;
+    modalTaskTitle.textContent = task.title;
+
+    const formattedTime = new Date(task.reminder.dateTime).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    modalTaskTime.textContent = `Scheduled for ${formattedTime}`;
+
+    reminderModalOverlay.classList.remove('hidden');
+  }
+
+  function hideReminderModal() {
+    reminderModalOverlay.classList.add('hidden');
+    state.activeAlertTaskId = null;
+  }
+
+  function handleSnoozeModal(minutes) {
+    if (!state.activeAlertTaskId) return;
+
+    const newDate = new Date();
+    newDate.setMinutes(newDate.getMinutes() + minutes);
+
+    state.tasks = state.tasks.map(task => {
+      if (task.id === state.activeAlertTaskId) {
+        return {
+          ...task,
+          reminder: {
+            ...task.reminder,
+            dateTime: newDate.toISOString(),
+            triggered: false
+          }
+        };
+      }
+      return task;
+    });
+
+    saveTasks();
+    hideReminderModal();
+    render();
+  }
+
+  function handleCompleteModalTask() {
+    if (!state.activeAlertTaskId) return;
+    toggleTask(state.activeAlertTaskId);
+    hideReminderModal();
   }
 
   // =========================================================================
   // Task Operations (Add, Toggle, Delete, Edit, Clear)
   // =========================================================================
-
-  /**
-   * Adds a new task with validation and error visual effect
-   */
   function handleAddTask() {
     const title = taskInput.value.trim();
     const priority = prioritySelect.value;
 
     if (!title) {
-      // Shake input wrapper if empty
       taskInput.parentElement.classList.add('shake');
       setTimeout(() => taskInput.parentElement.classList.remove('shake'), 400);
       taskInput.focus();
       return;
+    }
+
+    let reminderObj = null;
+    if (enableReminderCheck.checked && reminderDateTime.value) {
+      reminderObj = {
+        dateTime: new Date(reminderDateTime.value).toISOString(),
+        soundEnabled: reminderSoundCheck.checked,
+        triggered: false
+      };
     }
 
     const newTask = {
@@ -181,7 +401,8 @@ document.addEventListener('DOMContentLoaded', () => {
       title: title,
       completed: false,
       priority: priority,
-      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      reminder: reminderObj
     };
 
     state.tasks.unshift(newTask);
@@ -189,15 +410,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reset input
     taskInput.value = '';
+    enableReminderCheck.checked = false;
+    reminderInputGroup.classList.add('hidden');
+    setupDefaultReminderInput();
     taskInput.focus();
 
     render();
   }
 
-  /**
-   * Toggles task completion state
-   * @param {number} id 
-   */
   function toggleTask(id) {
     state.tasks = state.tasks.map(task => {
       if (task.id === id) {
@@ -210,11 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   }
 
-  /**
-   * Deletes a task with smooth exit animation
-   * @param {number} id 
-   * @param {HTMLElement} itemEl 
-   */
   function deleteTask(id, itemEl) {
     if (itemEl) {
       itemEl.classList.add('removing');
@@ -230,20 +445,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /**
-   * Enters inline edit mode for a given task ID
-   * @param {number} id 
-   */
+  function removeReminderFromTask(id) {
+    state.tasks = state.tasks.map(task => {
+      if (task.id === id) {
+        return { ...task, reminder: null };
+      }
+      return task;
+    });
+
+    saveTasks();
+    render();
+  }
+
   function startEdit(id) {
     state.editingId = id;
     render();
   }
 
-  /**
-   * Saves edited task title
-   * @param {number} id 
-   * @param {string} newTitle 
-   */
   function saveEdit(id, newTitle) {
     const trimmed = newTitle.trim();
     if (!trimmed) {
@@ -264,17 +482,11 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   }
 
-  /**
-   * Cancels inline editing
-   */
   function cancelEdit() {
     state.editingId = null;
     render();
   }
 
-  /**
-   * Removes all completed tasks
-   */
   function handleClearCompleted() {
     state.tasks = state.tasks.filter(task => !task.completed);
     saveTasks();
@@ -282,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Statistics & Progress Logic
+  // Statistics & Upcoming Reminders Section Rendering
   // =========================================================================
   function updateStats() {
     const total = state.tasks.length;
@@ -293,33 +505,87 @@ document.addEventListener('DOMContentLoaded', () => {
     statActive.textContent = active;
     statCompleted.textContent = completed;
 
-    // Calculate completion percentage
     const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
     progressPercent.textContent = `${percent}%`;
     progressFill.style.width = `${percent}%`;
 
-    // Enable/Disable Clear Completed button
     clearCompletedBtn.disabled = completed === 0;
   }
 
-  // =========================================================================
-  // Rendering & Template Builders
-  // =========================================================================
+  function updateRemindersSection() {
+    const activeReminders = state.tasks.filter(t => !t.completed && t.reminder);
 
-  /**
-   * Main render function that filters and updates DOM
-   */
+    if (activeReminders.length === 0) {
+      remindersSection.classList.add('hidden');
+      return;
+    }
+
+    remindersSection.classList.remove('hidden');
+    remindersCountBadge.textContent = activeReminders.length;
+    remindersList.innerHTML = '';
+
+    const nowMs = Date.now();
+
+    activeReminders.forEach(task => {
+      const remDate = new Date(task.reminder.dateTime);
+      const diffMs = remDate.getTime() - nowMs;
+      const isDue = diffMs <= 0;
+
+      let countdownText = 'Due now';
+      if (!isDue) {
+        const diffMins = Math.ceil(diffMs / (1000 * 60));
+        if (diffMins < 60) {
+          countdownText = `In ${diffMins} min`;
+        } else {
+          const diffHours = Math.floor(diffMins / 60);
+          countdownText = `In ${diffHours} hr`;
+        }
+      }
+
+      const card = document.createElement('div');
+      card.className = 'reminder-card-item';
+      card.innerHTML = `
+        <div class="reminder-card-info">
+          <div class="reminder-card-title">${escapeHTML(task.title)}</div>
+          <div class="reminder-card-time">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            ${remDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; ${remDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="reminder-countdown-badge ${isDue ? 'due' : ''}">${countdownText}</span>
+          <button class="action-btn delete" title="Cancel reminder">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      `;
+
+      card.querySelector('.action-btn.delete').addEventListener('click', () => {
+        removeReminderFromTask(task.id);
+      });
+
+      remindersList.appendChild(card);
+    });
+  }
+
+  // =========================================================================
+  // Rendering Tasks List
+  // =========================================================================
   function render() {
     updateStats();
+    updateRemindersSection();
     tasksContainer.innerHTML = '';
 
-    // Filter tasks based on selected tab and search query
     const filteredTasks = state.tasks.filter(task => {
-      // Tab filter
       if (state.filter === 'active' && task.completed) return false;
       if (state.filter === 'completed' && !task.completed) return false;
 
-      // Search filter
       if (state.searchQuery && !task.title.toLowerCase().includes(state.searchQuery)) {
         return false;
       }
@@ -327,13 +593,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     });
 
-    // Handle Empty State
     if (filteredTasks.length === 0) {
       renderEmptyState();
       return;
     }
 
-    // Render each task item
     filteredTasks.forEach(task => {
       if (state.editingId === task.id) {
         tasksContainer.appendChild(createEditTaskNode(task));
@@ -343,9 +607,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /**
-   * Renders empty state message when no tasks match current filter/search
-   */
   function renderEmptyState() {
     let emptyTitle = 'No tasks found';
     let emptySubtitle = 'Get started by creating a new task above!';
@@ -365,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyNode.className = 'empty-state';
     emptyNode.innerHTML = `
       <div class="empty-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M8 12h8"></path>
         </svg>
@@ -376,17 +637,11 @@ document.addEventListener('DOMContentLoaded', () => {
     tasksContainer.appendChild(emptyNode);
   }
 
-  /**
-   * Creates DOM element for a standard task item
-   * @param {Object} task 
-   * @returns {HTMLElement}
-   */
   function createTaskNode(task) {
     const item = document.createElement('div');
     item.className = `task-item ${task.completed ? 'completed' : ''}`;
     item.dataset.id = task.id;
 
-    // Checkbox container
     const leftGroup = document.createElement('div');
     leftGroup.className = 'task-left';
 
@@ -409,7 +664,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkboxLabel.appendChild(checkboxInput);
     checkboxLabel.appendChild(checkmarkSpan);
 
-    // Task content (Title & Metadata)
     const taskContent = document.createElement('div');
     taskContent.className = 'task-content';
 
@@ -421,9 +675,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const metaEl = document.createElement('div');
     metaEl.className = 'task-meta';
+
+    let reminderHtml = '';
+    if (task.reminder) {
+      const remDate = new Date(task.reminder.dateTime);
+      const formattedRem = `${remDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      reminderHtml = `
+        <span class="task-reminder-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          </svg>
+          ${formattedRem}
+        </span>
+        <span>&bull;</span>
+      `;
+    }
+
     metaEl.innerHTML = `
       <span class="priority-badge ${task.priority}">${task.priority}</span>
       <span>&bull;</span>
+      ${reminderHtml}
       <span>${task.createdAt || 'Today'}</span>
     `;
 
@@ -433,30 +704,27 @@ document.addEventListener('DOMContentLoaded', () => {
     leftGroup.appendChild(checkboxLabel);
     leftGroup.appendChild(taskContent);
 
-    // Action buttons group (Edit & Delete)
     const actionsGroup = document.createElement('div');
     actionsGroup.className = 'task-actions';
 
-    // Edit button
     const editBtn = document.createElement('button');
     editBtn.className = 'action-btn edit';
     editBtn.title = 'Edit task';
     editBtn.setAttribute('aria-label', 'Edit task');
     editBtn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </svg>
     `;
     editBtn.addEventListener('click', () => startEdit(task.id));
 
-    // Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'action-btn delete';
     deleteBtn.title = 'Delete task';
     deleteBtn.setAttribute('aria-label', 'Delete task');
     deleteBtn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="3 6 5 6 21 6"></polyline>
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
       </svg>
@@ -472,11 +740,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return item;
   }
 
-  /**
-   * Creates DOM element for inline task editing mode
-   * @param {Object} task 
-   * @returns {HTMLElement}
-   */
   function createEditTaskNode(task) {
     const item = document.createElement('div');
     item.className = 'task-item editing';
@@ -490,24 +753,22 @@ document.addEventListener('DOMContentLoaded', () => {
     editInput.className = 'edit-input';
     editInput.value = task.title;
 
-    // Save button
     const saveBtn = document.createElement('button');
     saveBtn.type = 'submit';
     saveBtn.className = 'action-btn edit';
     saveBtn.title = 'Save edit';
     saveBtn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
     `;
 
-    // Cancel button
     const cancelBtn = document.createElement('button');
     cancelBtn.type = 'button';
     cancelBtn.className = 'action-btn delete';
     cancelBtn.title = 'Cancel edit';
     cancelBtn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
       </svg>
@@ -520,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveEdit(task.id, editInput.value);
     });
 
-    // Handle Escape key to cancel
     editInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         cancelEdit();
@@ -533,7 +793,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     item.appendChild(editForm);
 
-    // Auto focus and select input text
     setTimeout(() => {
       editInput.focus();
       editInput.select();
@@ -542,13 +801,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return item;
   }
 
-  // Helper utility function for HTML escaping
   function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
 
-  // Initialize Application
   init();
 });
