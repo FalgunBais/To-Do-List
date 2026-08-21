@@ -1,31 +1,70 @@
 /**
- * TaskFlow - Premium Dashboard & Reminders Engine
- * Includes task CRUD operations, statistics calculation,
- * filter & search handling, inline task editing,
- * personalized time-of-day greeting, Thought for the Day quote engine,
- * customizable recurring reminders engine, Web Audio chime,
- * and localStorage persistence.
+ * TaskFlow - Premium Workspace & Daily Productivity Suite
+ * 
+ * Features:
+ * - Dynamic Time-of-Day Theme Engine (Morning, Afternoon, Evening, Night)
+ * - Water-Gliding Fluid Custom Cursor Physics & Click Ripples
+ * - Live Running Digital Clock (HH:MM:SS AM/PM)
+ * - Interactive Widgets (Pomodoro Focus Timer, Mood Tracker, Sticky Notes)
+ * - Daily Activity Presets Engine (Gym, Work, Study, Wellness, Chores)
+ * - Weekly Timetable Module with 1-click Task Conversion
+ * - Customizable & Recurring Real-Time Reminders
+ * - Full localStorage Persistence
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
   // =========================================================================
-  // State & Configuration
+  // State & LocalStorage Configuration
   // =========================================================================
-  const STORAGE_KEY = 'taskflow_tasks_v1';
-  const USER_KEY = 'taskflow_username_v1';
-  
+  const STORAGE_KEY_TASKS = 'taskflow_tasks_v1';
+  const STORAGE_KEY_USER = 'taskflow_username_v1';
+  const STORAGE_KEY_TIMETABLE = 'taskflow_timetable_v1';
+  const STORAGE_KEY_NOTES = 'taskflow_notes_v1';
+  const STORAGE_KEY_MOOD = 'taskflow_mood_v1';
+
   let state = {
     tasks: [],
+    timetable: {
+      Mon: [
+        { id: 1, time: '07:00 AM - 08:00 AM', activity: 'Morning Gym & Cardio', category: 'Gym', notify: true },
+        { id: 2, time: '09:00 AM - 12:00 PM', activity: 'Sprint Feature Development', category: 'Work', notify: true }
+      ],
+      Tue: [
+        { id: 3, time: '10:00 AM - 11:30 AM', activity: 'System Architecture Study', category: 'Study', notify: true }
+      ],
+      Wed: [
+        { id: 4, time: '08:00 AM - 09:00 AM', activity: 'Legs & Core Strength Workout', category: 'Gym', notify: true }
+      ],
+      Thu: [
+        { id: 5, time: '02:00 PM - 04:00 PM', activity: 'API Integration & Code Review', category: 'Work', notify: true }
+      ],
+      Fri: [
+        { id: 6, time: '05:00 PM - 06:00 PM', activity: 'Weekly House Cleanup & Groceries', category: 'Chores', notify: true }
+      ],
+      Sat: [
+        { id: 7, time: '08:30 AM - 09:30 AM', activity: 'Outdoor Run & Meditation', category: 'Wellness', notify: true }
+      ],
+      Sun: [
+        { id: 8, time: '07:00 PM - 08:30 PM', activity: 'Weekly Planning & Goal Setting', category: 'Study', notify: true }
+      ]
+    },
+    activeTimetableDay: 'Mon',
     userName: 'Sunil',
     filter: 'all', // 'all' | 'active' | 'completed'
     searchQuery: '',
     editingId: null,
     activeAlertTaskId: null,
-    currentQuoteIndex: 0
+    currentQuoteIndex: 0,
+    quickNotes: '',
+    selectedMood: '🚀',
+    // Pomodoro Timer State
+    timerSecondsLeft: 25 * 60,
+    timerRunning: false,
+    timerInterval: null
   };
 
-  // Inspirational Quotes Database
+  // Motivational Quotes Database
   const MOTIVATIONAL_QUOTES = [
     { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
     { text: "Action is the foundational key to all success.", author: "Pablo Picasso" },
@@ -36,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { text: "Don't count the days, make the days count.", author: "Muhammad Ali" }
   ];
 
-  // Sample tasks loaded if user has no stored tasks
+  // Default initial tasks
   const DEFAULT_TASKS = [
     {
       id: 1700000000001,
@@ -48,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     {
       id: 1700000000002,
-      title: 'Complete project documentation',
+      title: 'Complete project documentation & testing',
       completed: false,
       priority: 'medium',
       createdAt: 'Today',
@@ -67,13 +106,45 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   // DOM Elements
   // =========================================================================
+  // Water Cursor
+  const cursorDot = document.getElementById('cursorDot');
+  const cursorFollower = document.getElementById('cursorFollower');
+
+  // Header & Clock Elements
   const timeGreetingEl = document.getElementById('timeGreeting');
   const userNameBadge = document.getElementById('userNameBadge');
-  
-  // Thought for the Day elements
+  const themeStatusSubtitle = document.getElementById('themeStatusSubtitle');
+  const clockHours = document.getElementById('clockHours');
+  const clockMinutes = document.getElementById('clockMinutes');
+  const clockSeconds = document.getElementById('clockSeconds');
+  const clockAmPm = document.getElementById('clockAmPm');
+  const currentDayEl = document.getElementById('currentDay');
+  const currentDateEl = document.getElementById('currentDate');
+
+  // Quote elements
   const quoteText = document.getElementById('quoteText');
   const quoteAuthor = document.getElementById('quoteAuthor');
   const shuffleQuoteBtn = document.getElementById('shuffleQuoteBtn');
+
+  // Widgets Elements
+  const timerDisplay = document.getElementById('timerDisplay');
+  const timerToggleBtn = document.getElementById('timerToggleBtn');
+  const timerResetBtn = document.getElementById('timerResetBtn');
+  const timerStatusBadge = document.getElementById('timerStatusBadge');
+  const moodSelector = document.getElementById('moodSelector');
+  const quickNotesPad = document.getElementById('quickNotesPad');
+
+  // Activity Presets
+  const activityChips = document.querySelectorAll('.activity-chip');
+
+  // Weekly Timetable Elements
+  const dayTabs = document.querySelectorAll('.day-tab');
+  const timetableForm = document.getElementById('timetableForm');
+  const slotTimeInput = document.getElementById('slotTimeInput');
+  const slotActivityInput = document.getElementById('slotActivityInput');
+  const slotCategorySelect = document.getElementById('slotCategorySelect');
+  const slotAlertCheck = document.getElementById('slotAlertCheck');
+  const timetableSlotsContainer = document.getElementById('timetableSlotsContainer');
 
   // Task form elements
   const taskForm = document.getElementById('taskForm');
@@ -90,10 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const statCompleted = document.getElementById('statCompleted');
   const progressPercent = document.getElementById('progressPercent');
   const progressFill = document.getElementById('progressFill');
-
-  // Date elements
-  const currentDayEl = document.getElementById('currentDay');
-  const currentDateEl = document.getElementById('currentDate');
 
   // Reminder elements
   const enableReminderCheck = document.getElementById('enableReminderCheck');
@@ -121,65 +188,366 @@ document.addEventListener('DOMContentLoaded', () => {
   let audioCtx = null;
 
   // =========================================================================
-  // Application Initialization
+  // Initialization
   // =========================================================================
   function init() {
-    loadUserData();
-    setupHeaderGreetingAndDate();
+    loadStoredData();
+    initWaterCursor();
+    updateTimeOfDayTheme();
+    startLiveClock();
     setupThoughtOfTheDay();
-    loadTasks();
     setupDefaultReminderInput();
     setupEventListeners();
     updateNotificationPermissionUI();
     startReminderEngine();
+    renderTimetable();
     render();
   }
 
-  /**
-   * Calculates time of day and sets greeting message & user name
-   */
-  function setupHeaderGreetingAndDate() {
+  // =========================================================================
+  // 1. Water-Gliding Fluid Custom Cursor Engine
+  // =========================================================================
+  function initWaterCursor() {
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let followerX = mouseX;
+    let followerY = mouseY;
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+
+      if (cursorDot) {
+        cursorDot.style.left = `${mouseX}px`;
+        cursorDot.style.top = `${mouseY}px`;
+      }
+    });
+
+    // Smooth Spring-Damped Follower Loop (gliding on water feel)
+    function renderFollower() {
+      const ease = 0.18;
+      followerX += (mouseX - followerX) * ease;
+      followerY += (mouseY - followerY) * ease;
+
+      if (cursorFollower) {
+        cursorFollower.style.left = `${followerX}px`;
+        cursorFollower.style.top = `${followerY}px`;
+      }
+
+      requestAnimationFrame(renderFollower);
+    }
+    requestAnimationFrame(renderFollower);
+
+    // Water Ripple on Click
+    window.addEventListener('click', (e) => {
+      createWaterRipple(e.clientX, e.clientY);
+    });
+
+    // Hover scale effects on interactive elements
+    const interactiveElements = document.querySelectorAll('button, a, input, select, textarea, .activity-chip, .user-name-badge, .checkbox-container');
+    interactiveElements.forEach(el => {
+      el.addEventListener('mouseenter', () => {
+        if (cursorFollower) {
+          cursorFollower.style.width = '52px';
+          cursorFollower.style.height = '52px';
+          cursorFollower.style.borderColor = 'var(--accent-secondary)';
+          cursorFollower.style.background = 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(255, 255, 255, 0) 70%)';
+        }
+      });
+      el.addEventListener('mouseleave', () => {
+        if (cursorFollower) {
+          cursorFollower.style.width = '36px';
+          cursorFollower.style.height = '36px';
+          cursorFollower.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+          cursorFollower.style.background = 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(255, 255, 255, 0) 70%)';
+        }
+      });
+    });
+  }
+
+  function createWaterRipple(x, y) {
+    const ripple = document.createElement('div');
+    ripple.className = 'cursor-ripple';
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+    document.body.appendChild(ripple);
+
+    setTimeout(() => {
+      ripple.remove();
+    }, 600);
+  }
+
+  // =========================================================================
+  // 2. Dynamic Time-of-Day Theme Engine
+  // =========================================================================
+  function updateTimeOfDayTheme() {
     const now = new Date();
     const hours = now.getHours();
 
-    let greeting = 'Good Morning';
-    if (hours >= 12 && hours < 17) {
+    let theme = 'afternoon';
+    let greeting = 'Good Afternoon';
+    let themeDesc = 'Vibrant Daytime Mode';
+
+    if (hours >= 5 && hours < 12) {
+      theme = 'morning';
+      greeting = 'Good Morning';
+      themeDesc = 'Sunrise Golden Energy';
+    } else if (hours >= 12 && hours < 17) {
+      theme = 'afternoon';
       greeting = 'Good Afternoon';
-    } else if (hours >= 17 && hours < 22) {
+      themeDesc = 'Vibrant Daytime Focus';
+    } else if (hours >= 17 && hours < 21) {
+      theme = 'evening';
       greeting = 'Good Evening';
-    } else if (hours >= 22 || hours < 5) {
+      themeDesc = 'Sunset Twilight Ambiance';
+    } else {
+      theme = 'night';
       greeting = 'Good Night';
+      themeDesc = 'Midnight Cosmic Calm';
     }
 
+    document.body.dataset.timeOfDay = theme;
     timeGreetingEl.textContent = greeting;
-    userNameBadge.textContent = state.userName;
-
-    const dayOptions = { weekday: 'long' };
-    const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-
-    currentDayEl.textContent = now.toLocaleDateString('en-US', dayOptions);
-    currentDateEl.textContent = now.toLocaleDateString('en-US', dateOptions);
+    themeStatusSubtitle.textContent = `Productivity Suite \u2022 ${themeDesc}`;
   }
 
-  function loadUserData() {
-    const storedName = localStorage.getItem(USER_KEY);
-    if (storedName) {
-      state.userName = storedName;
+  // =========================================================================
+  // 3. Live Running Clock (HH:MM:SS AM/PM)
+  // =========================================================================
+  function startLiveClock() {
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+
+      // 12-hour format conversion
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+      const formattedHours = String(hours).padStart(2, '0');
+
+      clockHours.textContent = formattedHours;
+      clockMinutes.textContent = minutes;
+      clockSeconds.textContent = seconds;
+      clockAmPm.textContent = ampm;
+
+      const dayOptions = { weekday: 'long' };
+      const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+      currentDayEl.textContent = now.toLocaleDateString('en-US', dayOptions);
+      currentDateEl.textContent = now.toLocaleDateString('en-US', dateOptions);
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+  }
+
+  // =========================================================================
+  // 4. Productivity Widgets Engine (Focus Timer + Mood/Notes)
+  // =========================================================================
+  
+  // Pomodoro Focus Timer
+  function updateTimerDisplay() {
+    const mins = String(Math.floor(state.timerSecondsLeft / 60)).padStart(2, '0');
+    const secs = String(state.timerSecondsLeft % 60).padStart(2, '0');
+    timerDisplay.textContent = `${mins}:${secs}`;
+  }
+
+  function toggleTimer() {
+    if (state.timerRunning) {
+      clearInterval(state.timerInterval);
+      state.timerRunning = false;
+      timerToggleBtn.textContent = 'Start';
+      timerStatusBadge.textContent = 'Paused';
+      timerStatusBadge.style.color = '#fbbf24';
+    } else {
+      state.timerRunning = true;
+      timerToggleBtn.textContent = 'Pause';
+      timerStatusBadge.textContent = 'Focusing...';
+      timerStatusBadge.style.color = '#10b981';
+
+      state.timerInterval = setInterval(() => {
+        if (state.timerSecondsLeft > 0) {
+          state.timerSecondsLeft--;
+          updateTimerDisplay();
+        } else {
+          clearInterval(state.timerInterval);
+          state.timerRunning = false;
+          timerToggleBtn.textContent = 'Start';
+          timerStatusBadge.textContent = 'Completed!';
+          playChimeSound();
+          showNativeNotification('Focus Session Complete', 'Great job! Time for a short break.');
+        }
+      }, 1000);
     }
   }
 
-  function saveUserName(newName) {
-    const trimmed = newName.trim();
-    if (trimmed) {
-      state.userName = trimmed;
-      localStorage.setItem(USER_KEY, trimmed);
-      userNameBadge.textContent = trimmed;
-    }
+  function resetTimer() {
+    clearInterval(state.timerInterval);
+    state.timerRunning = false;
+    state.timerSecondsLeft = 25 * 60;
+    updateTimerDisplay();
+    timerToggleBtn.textContent = 'Start';
+    timerStatusBadge.textContent = 'Ready';
+    timerStatusBadge.style.color = '#818cf8';
   }
 
-  /**
-   * Sets up Thought for the Day based on day of year
-   */
+  // Mood & Quick Notes
+  function selectMood(moodEmoji) {
+    state.selectedMood = moodEmoji;
+    localStorage.setItem(STORAGE_KEY_MOOD, moodEmoji);
+
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mood === moodEmoji);
+    });
+  }
+
+  // =========================================================================
+  // 5. Daily Activity Presets Engine
+  // =========================================================================
+  function handleActivityPresetClick(chip) {
+    const title = chip.dataset.title;
+    const priority = chip.dataset.priority || 'medium';
+
+    const newTask = {
+      id: Date.now(),
+      title: title,
+      completed: false,
+      priority: priority,
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      reminder: null
+    };
+
+    state.tasks.unshift(newTask);
+    saveTasks();
+    render();
+
+    // Visual ripple effect on button
+    chip.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      chip.style.transform = '';
+    }, 150);
+  }
+
+  // =========================================================================
+  // 6. Weekly Timetable Module
+  // =========================================================================
+  function renderTimetable() {
+    const day = state.activeTimetableDay;
+    const slots = state.timetable[day] || [];
+
+    timetableSlotsContainer.innerHTML = '';
+
+    if (slots.length === 0) {
+      timetableSlotsContainer.innerHTML = `
+        <div style="text-align:center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem;">
+          No routines scheduled for ${day}. Add one above!
+        </div>
+      `;
+      return;
+    }
+
+    slots.forEach(slot => {
+      const slotEl = document.createElement('div');
+      slotEl.className = 'timetable-slot-item';
+      slotEl.innerHTML = `
+        <span class="slot-time-badge">${escapeHTML(slot.time)}</span>
+        <div class="slot-details">
+          <span class="slot-title">${escapeHTML(slot.activity)}</span>
+          <span class="slot-category-tag">${escapeHTML(slot.category)}</span>
+        </div>
+        <div class="slot-actions">
+          <button class="btn-slot-convert" title="Convert to an active task in 1 click">
+            + Task
+          </button>
+          <button class="action-btn delete" title="Delete timetable slot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      `;
+
+      // 1-Click Convert to Task
+      slotEl.querySelector('.btn-slot-convert').addEventListener('click', () => {
+        convertSlotToTask(slot);
+      });
+
+      // Delete Slot
+      slotEl.querySelector('.action-btn.delete').addEventListener('click', () => {
+        deleteTimetableSlot(slot.id);
+      });
+
+      timetableSlotsContainer.appendChild(slotEl);
+    });
+  }
+
+  function handleAddTimetableSlot(e) {
+    e.preventDefault();
+    const time = slotTimeInput.value.trim();
+    const activity = slotActivityInput.value.trim();
+    const category = slotCategorySelect.value;
+    const notify = slotAlertCheck.checked;
+
+    if (!time || !activity) return;
+
+    const newSlot = {
+      id: Date.now(),
+      time: time,
+      activity: activity,
+      category: category,
+      notify: notify
+    };
+
+    if (!state.timetable[state.activeTimetableDay]) {
+      state.timetable[state.activeTimetableDay] = [];
+    }
+
+    state.timetable[state.activeTimetableDay].push(newSlot);
+    saveTimetable();
+
+    slotTimeInput.value = '';
+    slotActivityInput.value = '';
+    renderTimetable();
+  }
+
+  function deleteTimetableSlot(id) {
+    state.timetable[state.activeTimetableDay] = state.timetable[state.activeTimetableDay].filter(s => s.id !== id);
+    saveTimetable();
+    renderTimetable();
+  }
+
+  function convertSlotToTask(slot) {
+    const priorityMap = {
+      Work: 'high',
+      Gym: 'high',
+      Study: 'medium',
+      Wellness: 'low',
+      Chores: 'medium'
+    };
+
+    const newTask = {
+      id: Date.now(),
+      title: `[${slot.time}] ${slot.activity}`,
+      completed: false,
+      priority: priorityMap[slot.category] || 'medium',
+      createdAt: 'Today',
+      reminder: null
+    };
+
+    state.tasks.unshift(newTask);
+    saveTasks();
+    render();
+  }
+
+  function saveTimetable() {
+    localStorage.setItem(STORAGE_KEY_TIMETABLE, JSON.stringify(state.timetable));
+  }
+
+  // =========================================================================
+  // 7. Thought for the Day Engine
+  // =========================================================================
   function setupThoughtOfTheDay() {
     const today = new Date();
     const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
@@ -198,9 +566,46 @@ document.addEventListener('DOMContentLoaded', () => {
     displayQuote(state.currentQuoteIndex);
   }
 
-  /**
-   * Sets default datetime-local input value to 15 minutes in future
-   */
+  // =========================================================================
+  // 8. Storage & Event Listeners
+  // =========================================================================
+  function loadStoredData() {
+    // User Name
+    const storedName = localStorage.getItem(STORAGE_KEY_USER);
+    if (storedName) state.userName = storedName;
+    userNameBadge.textContent = state.userName;
+
+    // Tasks
+    try {
+      const storedTasks = localStorage.getItem(STORAGE_KEY_TASKS);
+      state.tasks = storedTasks ? JSON.parse(storedTasks) : DEFAULT_TASKS;
+    } catch (e) {
+      state.tasks = DEFAULT_TASKS;
+    }
+
+    // Timetable
+    try {
+      const storedTt = localStorage.getItem(STORAGE_KEY_TIMETABLE);
+      if (storedTt) state.timetable = JSON.parse(storedTt);
+    } catch (e) {}
+
+    // Quick Notes & Mood
+    const storedNotes = localStorage.getItem(STORAGE_KEY_NOTES);
+    if (storedNotes && quickNotesPad) {
+      state.quickNotes = storedNotes;
+      quickNotesPad.value = storedNotes;
+    }
+
+    const storedMood = localStorage.getItem(STORAGE_KEY_MOOD);
+    if (storedMood) {
+      selectMood(storedMood);
+    }
+  }
+
+  function saveTasks() {
+    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(state.tasks));
+  }
+
   function setupDefaultReminderInput() {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 15);
@@ -213,48 +618,56 @@ document.addEventListener('DOMContentLoaded', () => {
     reminderDateTime.value = `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  // =========================================================================
-  // Storage Handlers
-  // =========================================================================
-  function loadTasks() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        state.tasks = JSON.parse(stored);
-      } else {
-        state.tasks = DEFAULT_TASKS;
-        saveTasks();
-      }
-    } catch (e) {
-      console.error('Failed to load tasks from localStorage', e);
-      state.tasks = [];
-    }
-  }
-
-  function saveTasks() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
-    } catch (e) {
-      console.error('Failed to save tasks to localStorage', e);
-    }
-  }
-
-  // =========================================================================
-  // Event Listeners Setup
-  // =========================================================================
   function setupEventListeners() {
-    // Edit username on badge click
+    // Edit User Name
     userNameBadge.addEventListener('click', () => {
       const input = prompt('Enter your name:', state.userName);
-      if (input !== null) {
-        saveUserName(input);
+      if (input && input.trim()) {
+        state.userName = input.trim();
+        localStorage.setItem(STORAGE_KEY_USER, state.userName);
+        userNameBadge.textContent = state.userName;
       }
     });
 
-    // Quote shuffle button
+    // Quote shuffle
     shuffleQuoteBtn.addEventListener('click', shuffleQuote);
 
-    // Form submission
+    // Focus Timer Controls
+    timerToggleBtn.addEventListener('click', toggleTimer);
+    timerResetBtn.addEventListener('click', resetTimer);
+
+    // Mood selection
+    moodSelector.addEventListener('click', (e) => {
+      if (e.target.classList.contains('mood-btn')) {
+        selectMood(e.target.dataset.mood);
+      }
+    });
+
+    // Quick Notes autosave
+    quickNotesPad.addEventListener('input', (e) => {
+      state.quickNotes = e.target.value;
+      localStorage.setItem(STORAGE_KEY_NOTES, state.quickNotes);
+    });
+
+    // Activity Chips Click
+    activityChips.forEach(chip => {
+      chip.addEventListener('click', () => handleActivityPresetClick(chip));
+    });
+
+    // Day Tabs Click
+    dayTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        dayTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        state.activeTimetableDay = tab.dataset.day;
+        renderTimetable();
+      });
+    });
+
+    // Timetable Form Submission
+    timetableForm.addEventListener('submit', handleAddTimetableSlot);
+
+    // Task Form Submission
     taskForm.addEventListener('submit', (e) => {
       e.preventDefault();
       handleAddTask();
@@ -262,23 +675,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reminder toggle checkbox
     enableReminderCheck.addEventListener('change', () => {
-      if (enableReminderCheck.checked) {
-        reminderInputGroup.classList.remove('hidden');
-      } else {
-        reminderInputGroup.classList.add('hidden');
-      }
+      reminderInputGroup.classList.toggle('hidden', !enableReminderCheck.checked);
     });
 
-    // Browser Notification permission button
+    // Notification Permission
     notifyPermissionBtn.addEventListener('click', requestNotificationPermission);
 
-    // Search input
+    // Live Search
     searchInput.addEventListener('input', (e) => {
       state.searchQuery = e.target.value.trim().toLowerCase();
       render();
     });
 
-    // Filter tabs
+    // Filter Buttons
     filterBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         filterBtns.forEach(b => {
@@ -293,10 +702,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Clear completed button
+    // Clear Completed
     clearCompletedBtn.addEventListener('click', handleClearCompleted);
 
-    // Modal action buttons
+    // Alert Modal Actions
     modalSnooze5Btn.addEventListener('click', () => handleSnoozeModal(5));
     modalSnooze15Btn.addEventListener('click', () => handleSnoozeModal(15));
     modalCompleteBtn.addEventListener('click', handleCompleteModalTask);
@@ -304,19 +713,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Web Audio & Browser Notification Utilities
+  // 9. Web Audio & Browser Notification Utilities
   // =========================================================================
   function playChimeSound() {
     try {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
 
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      const notes = [523.25, 659.25, 783.99, 1046.50];
       notes.forEach((freq, index) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -334,24 +742,19 @@ document.addEventListener('DOMContentLoaded', () => {
         osc.start(audioCtx.currentTime + index * 0.12);
         osc.stop(audioCtx.currentTime + index * 0.12 + 0.45);
       });
-    } catch (e) {
-      console.log('Audio playback blocked or uninitialized', e);
-    }
+    } catch (e) {}
   }
 
   function requestNotificationPermission() {
     if ('Notification' in window) {
-      Notification.requestPermission().then(permission => {
+      Notification.requestPermission().then(() => {
         updateNotificationPermissionUI();
       });
-    } else {
-      alert('Desktop notifications are not supported in your browser.');
     }
   }
 
   function updateNotificationPermissionUI() {
     if (!('Notification' in window)) return;
-
     if (Notification.permission === 'granted') {
       notifyPermissionBtn.classList.add('granted');
       notifyPermText.textContent = 'Alerts Active';
@@ -371,17 +774,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Recurrence Calculation Helper
+  // 10. Recurrence & Reminder Engine
   // =========================================================================
-  /**
-   * Calculates next recurrence date based on pattern (daily, weekly, weekdays, monthly)
-   * @param {string} currentISO 
-   * @param {string} type 
-   * @returns {string} ISOString
-   */
   function calculateNextRecurrence(currentISO, type) {
     const dt = new Date(currentISO);
-    
     switch (type) {
       case 'daily':
         dt.setDate(dt.getDate() + 1);
@@ -389,7 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'weekdays':
         do {
           dt.setDate(dt.getDate() + 1);
-        } while (dt.getDay() === 0 || dt.getDay() === 6); // Skip Sun(0) & Sat(6)
+        } while (dt.getDay() === 0 || dt.getDay() === 6);
         break;
       case 'weekly':
         dt.setDate(dt.getDate() + 7);
@@ -403,9 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return dt.toISOString();
   }
 
-  // =========================================================================
-  // Real-time Reminder Engine & Alert Ticker
-  // =========================================================================
   function startReminderEngine() {
     setInterval(() => {
       checkDueReminders();
@@ -439,9 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =========================================================================
-  // Reminder Modal Popup Logic
-  // =========================================================================
   function showReminderModal(task) {
     state.activeAlertTaskId = task.id;
     modalTaskTitle.textContent = task.title;
@@ -497,7 +887,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetId = state.activeAlertTaskId;
     const targetTask = state.tasks.find(t => t.id === targetId);
 
-    // If recurring, advance reminder to next cycle instead of marking completed forever!
     if (targetTask && targetTask.reminder && targetTask.reminder.recurrence && targetTask.reminder.recurrence !== 'none') {
       const nextDate = calculateNextRecurrence(targetTask.reminder.dateTime, targetTask.reminder.recurrence);
       state.tasks = state.tasks.map(t => {
@@ -528,7 +917,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetId = state.activeAlertTaskId;
     const targetTask = state.tasks.find(t => t.id === targetId);
 
-    // If recurring, reschedule to next recurrence automatically!
     if (targetTask && targetTask.reminder && targetTask.reminder.recurrence && targetTask.reminder.recurrence !== 'none') {
       const nextDate = calculateNextRecurrence(targetTask.reminder.dateTime, targetTask.reminder.recurrence);
       state.tasks = state.tasks.map(t => {
@@ -552,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Task Operations (Add, Toggle, Delete, Edit, Clear)
+  // 11. Task CRUD Operations
   // =========================================================================
   function handleAddTask() {
     const title = taskInput.value.trim();
@@ -587,7 +975,6 @@ document.addEventListener('DOMContentLoaded', () => {
     state.tasks.unshift(newTask);
     saveTasks();
 
-    // Reset input
     taskInput.value = '';
     enableReminderCheck.checked = false;
     reminderInputGroup.classList.add('hidden');
@@ -673,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Statistics & Upcoming Reminders Section Rendering
+  // 12. Statistics & Upcoming Reminders Section Rendering
   // =========================================================================
   function updateStats() {
     const total = state.tasks.length;
@@ -760,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // Rendering Tasks List
+  // 13. Rendering Tasks List
   // =========================================================================
   function render() {
     updateStats();
@@ -794,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderEmptyState() {
     let emptyTitle = 'No tasks found';
-    let emptySubtitle = 'Get started by creating a new task above!';
+    let emptySubtitle = 'Get started by creating a new task or choosing a quick activity above!';
 
     if (state.searchQuery) {
       emptyTitle = 'No matching tasks';
@@ -811,7 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyNode.className = 'empty-state';
     emptyNode.innerHTML = `
       <div class="empty-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M8 12h8"></path>
         </svg>

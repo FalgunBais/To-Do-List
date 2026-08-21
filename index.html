@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaskFlow | Premium Dashboard & Reminders</title>
-  <meta name="description" content="A clean, modern, dark glassmorphism dashboard To-Do List web application with real-time customizable reminders, statistics, quotes, and local storage.">
+  <title>TaskFlow | Premium Workspace & Daily Productivity Suite</title>
+  <meta name="description" content="A next-gen dark glassmorphism productivity dashboard featuring a To-Do manager, weekly timetable, real-time reminders, focus timer, activity presets, and live clock.">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-time-of-day="afternoon">
 
-  <!-- Ambient Glowing Background Elements -->
+  <!-- Water-Gliding Fluid Custom Cursor Elements -->
+  <div id="cursorDot" class="cursor-dot"></div>
+  <div id="cursorFollower" class="cursor-follower"></div>
+
+  <!-- Ambient Glowing Background Lights -->
   <div class="ambient-glow glow-1"></div>
   <div class="ambient-glow glow-2"></div>
   <div class="ambient-glow glow-3"></div>
@@ -31,19 +35,27 @@
               <span id="timeGreeting">Good Afternoon</span>, 
               <span id="userNameBadge" class="user-name-badge" title="Click to edit your name">Sunil</span>
             </h1>
-            <p class="app-subtitle">Manage goals & real-time recurring reminders</p>
+            <p class="app-subtitle" id="themeStatusSubtitle">Productivity Suite &bull; Dynamic Day Mode</p>
           </div>
         </div>
       </div>
 
+      <!-- Header Right: Live Running Clock & Alert Badge -->
       <div class="header-right">
-        <div class="date-badge">
-          <span class="current-day" id="currentDay">Today</span>
-          <span id="currentDate">Date</span>
+        <!-- Live Running Digital Clock -->
+        <div class="live-clock-card">
+          <div class="live-clock-time">
+            <span id="clockHours">12</span><span class="clock-colon">:</span><span id="clockMinutes">00</span><span class="clock-colon">:</span><span id="clockSeconds">00</span>
+            <span id="clockAmPm" class="clock-ampm">PM</span>
+          </div>
+          <div class="live-clock-date">
+            <span id="currentDay">Today</span> &bull; <span id="currentDate">Date</span>
+          </div>
         </div>
+
         <!-- Notification Permission Status Badge -->
         <button id="notifyPermissionBtn" class="notify-perm-btn" title="Enable browser notifications">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
@@ -55,7 +67,7 @@
     <!-- Thought for the Day Card -->
     <section class="quote-card" aria-label="Thought for the Day">
       <div class="quote-icon-box">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
         </svg>
       </div>
@@ -65,12 +77,160 @@
         <div id="quoteAuthor" class="quote-author">&mdash; Robin Sharma</div>
       </div>
       <button id="shuffleQuoteBtn" class="btn-quote-shuffle" title="Get another motivational thought">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="23 4 23 10 17 10"></polyline>
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
         </svg>
         <span>New Thought</span>
       </button>
+    </section>
+
+    <!-- Interactive Productivity Widgets Grid -->
+    <section class="widgets-grid" aria-label="Productivity Widgets">
+      
+      <!-- Widget 1: Pomodoro Focus Timer -->
+      <div class="widget-card focus-timer-card">
+        <div class="widget-header">
+          <div class="widget-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Focus Timer
+          </div>
+          <span class="widget-badge" id="timerStatusBadge">Ready</span>
+        </div>
+        <div class="timer-display-wrap">
+          <div class="timer-countdown" id="timerDisplay">25:00</div>
+          <div class="timer-controls">
+            <button id="timerToggleBtn" class="btn-timer-action primary">Start</button>
+            <button id="timerResetBtn" class="btn-timer-action">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Widget 2: Daily Mood & Quick Sticky Notes -->
+      <div class="widget-card notes-mood-card">
+        <div class="widget-header">
+          <div class="widget-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Daily Mood & Quick Notes
+          </div>
+          <div class="mood-selector" id="moodSelector">
+            <button class="mood-btn active" data-mood="🚀" title="Energetic">🚀</button>
+            <button class="mood-btn" data-mood="🎯" title="Focused">🎯</button>
+            <button class="mood-btn" data-mood="☕" title="Relaxed">☕</button>
+            <button class="mood-btn" data-mood="💡" title="Creative">💡</button>
+          </div>
+        </div>
+        <textarea id="quickNotesPad" class="quick-notes-pad" placeholder="Jot down quick thoughts, ideas, or reminders..."></textarea>
+      </div>
+
+    </section>
+
+    <!-- Daily Activity Presets Section (Study, Work, Gym, Wellness, Chores) -->
+    <section class="activity-presets-card" aria-label="Daily Activity Quick Add">
+      <div class="activity-presets-header">
+        <div class="activity-presets-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Quick Activity Presets
+        </div>
+        <span class="activity-presets-hint">1-Click to add daily essentials to your task list</span>
+      </div>
+      
+      <div class="activity-chips-grid">
+        <button class="activity-chip gym" data-title="🏋️‍♂️ 45 Min Strength / Gym Workout" data-priority="high">
+          <span class="chip-icon">🏋️‍♂️</span>
+          <span class="chip-text">Gym & Workout</span>
+        </button>
+
+        <button class="activity-chip work" data-title="💻 2-Hour Deep Focus Work Session" data-priority="high">
+          <span class="chip-icon">💻</span>
+          <span class="chip-text">Work & Coding</span>
+        </button>
+
+        <button class="activity-chip study" data-title="📚 Study Chapter & Take Notes" data-priority="medium">
+          <span class="chip-icon">📚</span>
+          <span class="chip-text">Study & Learn</span>
+        </button>
+
+        <button class="activity-chip wellness" data-title="🧘‍♂️ 15 Min Mindfulness & Meditation" data-priority="low">
+          <span class="chip-icon">🧘‍♂️</span>
+          <span class="chip-text">Wellness & Mind</span>
+        </button>
+
+        <button class="activity-chip chores" data-title="🧹 Essential Household Chores & Grocery" data-priority="medium">
+          <span class="chip-icon">🧹</span>
+          <span class="chip-text">Daily Chores</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Weekly Timetable Module -->
+    <section class="timetable-card" aria-label="Weekly Timetable">
+      <div class="timetable-header">
+        <div class="timetable-title-group">
+          <div class="timetable-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Weekly Schedule & Timetable
+          </div>
+          <span class="timetable-subtitle">Organize your routines by day with customized alerts</span>
+        </div>
+      </div>
+
+      <!-- Days of Week Tabs -->
+      <div class="day-tabs-wrapper" role="tablist">
+        <button class="day-tab active" data-day="Mon">Mon</button>
+        <button class="day-tab" data-day="Tue">Tue</button>
+        <button class="day-tab" data-day="Wed">Wed</button>
+        <button class="day-tab" data-day="Thu">Thu</button>
+        <button class="day-tab" data-day="Fri">Fri</button>
+        <button class="day-tab" data-day="Sat">Sat</button>
+        <button class="day-tab" data-day="Sun">Sun</button>
+      </div>
+
+      <!-- Add Timetable Slot Form -->
+      <form id="timetableForm" class="timetable-form">
+        <div class="timetable-form-inputs">
+          <input type="text" id="slotTimeInput" class="timetable-input time" placeholder="e.g. 09:00 AM - 10:30 AM" required>
+          <input type="text" id="slotActivityInput" class="timetable-input activity" placeholder="Activity / Subject title..." required>
+          <select id="slotCategorySelect" class="timetable-select">
+            <option value="Work">💻 Work</option>
+            <option value="Study">📚 Study</option>
+            <option value="Gym">🏋️‍♂️ Gym</option>
+            <option value="Wellness">🧘‍♂️ Wellness</option>
+            <option value="Chores">🧹 Chores</option>
+          </select>
+        </div>
+        <div class="timetable-form-actions">
+          <label class="timetable-alert-toggle">
+            <input type="checkbox" id="slotAlertCheck" checked>
+            <span>Notify Me</span>
+          </label>
+          <button type="submit" class="btn-add-slot">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add To Timetable
+          </button>
+        </div>
+      </form>
+
+      <!-- Active Day Timetable Slots List -->
+      <div id="timetableSlotsContainer" class="timetable-slots-list">
+        <!-- Rendered dynamically -->
+      </div>
     </section>
 
     <!-- Dashboard Statistics -->
@@ -122,7 +282,7 @@
     <!-- Overall Progress Bar Card -->
     <div class="progress-card">
       <div class="progress-header">
-        <span>Completion Rate</span>
+        <span>Daily Goal Progress</span>
         <span class="progress-percent" id="progressPercent">0%</span>
       </div>
       <div class="progress-track">
