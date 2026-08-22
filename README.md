@@ -1,20 +1,26 @@
-# TaskFlow - Premium Workspace & Daily Productivity Suite
+# 🚀 TaskFlow - Premium Workspace & Daily Productivity Suite
 
-TaskFlow is an all-in-one dark glassmorphic daily workspace application built from scratch using **HTML5, CSS3, and Vanilla JavaScript**. It combines task management, weekly scheduling, live productivity widgets, customizable real-time reminders, and dynamic time-of-day ambient themes.
+TaskFlow is an all-in-one dark glassmorphic daily productivity dashboard built with **HTML5, CSS3, and Vanilla JavaScript**. It integrates task management, weekly scheduling, live focus widgets, customizable recurring reminders, and dynamic time-of-day ambient themes.
 
-![TaskFlow Header](https://img.shields.io/badge/TaskFlow-v2.0-6366f1)
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_TaskFlow-22c55e?style=for-the-badge&logo=googlechrome&logoColor=white)](https://falgunbais.github.io/To-Do-List/)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/FalgunBais/To-Do-List)
+[![Version](https://img.shields.io/badge/Version-v2.0-6366f1?style=for-the-badge)](https://github.com/FalgunBais/To-Do-List)
 
 ---
 
-## 🌟 Feature Suite
+## 🌐 Live Demo
+
+Experience TaskFlow directly in your browser:
+👉 **[https://falgunbais.github.io/To-Do-List/](https://falgunbais.github.io/To-Do-List/)**
+
+---
+
+## 🌟 Feature Highlights
 
 ### 1. 🌊 Water-Gliding Fluid Custom Cursor
-- Custom glowing pointer with a spring-damped liquid follower ring that glides like water.
-- Interactive expansion when hovering over buttons, cards, and inputs.
-- Animated water ripple wave effect on every mouse click.
+- Custom glowing pointer with a spring-damped liquid follower ring that glides smoothly across the screen.
+- Interactive expansion hover states over buttons, cards, and inputs.
+- Animated water ripple wave effect on mouse clicks.
 
 ### 2. 🌅 Dynamic Time-of-Day Theme Engine
 - Background atmosphere and radiant aura meshes shift automatically based on the current hour:
@@ -66,23 +72,42 @@ To-Do-List/
 │   └── style.css      # Multi-theme design tokens, ambient aura glows, fluid cursor, responsive grid
 ├── js/
 │   └── script.js       # Theme engine, fluid cursor physics, live clock, widgets, timetable, reminders
-└── README.md          # Documentation
+└── README.md          # Project documentation & live links
 ```
 
 ---
 
 ## 🚀 How to Run Locally
 
-No build steps or dependencies required.
+No build steps or external dependencies required.
 
 1. Clone repository:
    ```bash
    git clone https://github.com/FalgunBais/To-Do-List.git
    ```
-2. Open `index.html` directly in your browser.
+2. Navigate into the directory and open `index.html` in your browser:
+   ```bash
+   cd To-Do-List
+   open index.html
+   ```
 
 Or serve with Python:
 ```bash
 python3 -m http.server 8080
 ```
 Visit `http://localhost:8080`.
+
+---
+
+## 🌍 GitHub Pages Deployment
+
+To enable GitHub Pages for this repository:
+1. Go to your repository on GitHub: `https://github.com/FalgunBais/To-Do-List`
+2. Navigate to **Settings** > **Pages**.
+3. Under **Branch**, select `main` and root `/ (root)`.
+4. Click **Save**. Your site will be published at `https://falgunbais.github.io/To-Do-List/`.
+
+---
+
+## 📄 License
+This project is open source and available under the [MIT License](https://github.com/FalgunBais/To-Do-List).
